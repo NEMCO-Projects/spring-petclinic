@@ -5,10 +5,11 @@
       - python3-pip
     state: present
 
-- name: Install PyMySQL using pip3
-  ansible.builtin.pip:
-    name: PyMySQL
-    executable: pip3
+- name: Install PyMySQL via apt
+  ansible.builtin.package:
+    name: python3-pymysql
+    state: present
+
 
 - name: Install MySQL server
   ansible.builtin.package:
