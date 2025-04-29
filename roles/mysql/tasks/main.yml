@@ -1,4 +1,26 @@
+- name: Ensure python3 and pip3 are installed
+  ansible.builtin.package:
+    name:
+      - python3
+      - python3-pip
+    state: present
 
+- name: Install PyMySQL using pip3
+  ansible.builtin.pip:
+    name: PyMySQL
+    executable: pip3
+
+- name: Install MySQL server
+  ansible.builtin.package:
+    name: mysql-server
+    state: present
+
+- name: Ensure MySQL is running and enabled
+  ansible.builtin.service:
+    name: mysql
+    state: started
+    enabled: true
+    
 - name: Install MySQL server
   ansible.builtin.package:
     name: mysql-server
