@@ -1,4 +1,4 @@
-- name: Install and configure MySQL on EC2 instance
+- name: Install and configure MySQL
   hosts: mysql_server
   become: yes
   vars:
