@@ -1,6 +1,8 @@
 - name: Install Java, Tomcat, and Nexus
   hosts: all
   become: yes
+  vars:
+    mysql_server_ip: "{{ lookup('file', 'mysql_ip.txt') | trim }}"
   tasks:
     - name: Update apt package cache
       apt:
@@ -9,4 +11,4 @@
   roles:
     - java
     - tomcat
-    # - nexus
+    - mysql
