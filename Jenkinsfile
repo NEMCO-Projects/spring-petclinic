@@ -30,6 +30,16 @@ pipeline {
                 }
             }
         }
+
+        stage('Getting mysql IP from Terraform') {
+            steps {
+                script {
+                    sh '''
+                    terraform output -raw mysql_server_ip > mysql_ip.txt
+                    '''
+                }
+            }
+        }
         
          stage('Generate Inventory') {
             steps {
@@ -38,6 +48,9 @@ pipeline {
                     sh """
                      echo "[tomcat_server]" > inventory
                      echo "\$(terraform output -raw tomcat_server_ip) ansible_user=ubuntu ansible_ssh_private_key_file=${SSH_PRIVATE_KEY_PATH} ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> inventory
+
+                     echo "[mysql_server]" >> inventory
+                    echo "$(terraform output -raw mysql_server_ip) ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/mujahed.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> inventory
                     """
                 }
             }
@@ -48,10 +61,12 @@ pipeline {
                 script {
                     // Get the IP addresses of the EC2 instances created by Terraform
                     def tomcatServerIp = sh(script: "terraform output -raw tomcat_server_ip", returnStdout: true).trim()
+                    def mysqlServerIp = sh(script: "terraform output -raw mysql_server_ip", returnStdout: true).trim()
         
                     // Define the servers and their IPs in a map
                     def servers = [
                         "tomcat_server": tomcatServerIp
+                         "mysql_server": mysqlServerIp
                     ]
         
                     // SSH user and private key path
@@ -60,7 +75,7 @@ pipeline {
         
                     // Check if all servers are up and reachable via SSH
                     def retries = 0
-                    def maxRetries = 30  // Maximum number of retries (e.g., 30 attempts)
+                    def maxRetries = 5  // Maximum number of retries (e.g., 30 attempts)
                     def waitTime = 10    // Wait time between retries (in seconds)
         
                     def reachableServers = [:]
