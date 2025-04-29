@@ -1,4 +1,4 @@
-- name: Install and configure MySQL 1973
+- name: Install and configure MySQL
   hosts: mysql_server
   become: yes
   vars:
@@ -7,54 +7,54 @@
     petclinic_password: "Imran@ali_khan1973"  # Set your own secure password here
     mysql_server_ip: "{{ lookup('file', 'mysql_ip.txt') | trim }}"  # Use the IP from mysql_ip.txt
 
-  tasks:
-    - name: Update apt cache 1973
-      ansible.builtin.apt:
-        update_cache: yes
+ 
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
 
-    - name: Install MySQL server 1973
-      ansible.builtin.package:
-        name: mysql-server
-        state: present
+- name: Install MySQL server
+  ansible.builtin.package:
+    name: mysql-server
+    state: present
 
-    - name: Ensure MySQL service is started and enabled 1973
-      ansible.builtin.service:
-        name: mysql
-        state: started
-        enabled: true
+- name: Ensure MySQL service is started and enabled
+  ansible.builtin.service:
+    name: mysql
+    state: started
+    enabled: true
 
-    - name: Secure MySQL installation 1973
-      ansible.builtin.shell: |
-        mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
-        mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';"
-        mysql -u root -e "FLUSH PRIVILEGES;"
-      ignore_errors: yes
+- name: Secure MySQL installation
+  ansible.builtin.shell: |
+    mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
+    mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';"
+    mysql -u root -e "FLUSH PRIVILEGES;"
+  ignore_errors: yes
 
-    - name: Create MySQL database 1973
-      community.mysql.mysql_db:
-        name: "{{ petclinic_db }}"
-        state: present
-        login_user: root
-        login_password: "root"
-        host: "{{ mysql_server_ip }}"
+- name: Create MySQL database
+  community.mysql.mysql_db:
+    name: "{{ petclinic_db }}"
+    state: present
+    login_user: root
+    login_password: "root"
+    host: "{{ mysql_server_ip }}"
 
-    - name: Create MySQL user and grant privileges 1973
-      community.mysql.mysql_user:
-        name: "{{ petclinic_user }}"
-        password: "{{ petclinic_password }}"
-        priv: "{{ petclinic_db }}.*:ALL"
-        host: "%"
-        state: present
-        login_user: root
-        login_password: "root"
+- name: Create MySQL user and grant privileges
+  community.mysql.mysql_user:
+    name: "{{ petclinic_user }}"
+    password: "{{ petclinic_password }}"
+    priv: "{{ petclinic_db }}.*:ALL"
+    host: "%"
+    state: present
+    login_user: root
+    login_password: "root"
 
-    - name: Allow remote access to MySQL 1973
-      ansible.builtin.lineinfile:
-        path: /etc/mysql/mysql.conf.d/mysqld.cnf
-        regexp: '^bind-address'
-        line: 'bind-address = 0.0.0.0'
+- name: Allow remote access to MySQL
+  ansible.builtin.lineinfile:
+    path: /etc/mysql/mysql.conf.d/mysqld.cnf
+    regexp: '^bind-address'
+    line: 'bind-address = 0.0.0.0'
 
-    - name: Restart MySQL service to apply changes 1973
-      ansible.builtin.service:
-        name: mysql
-        state: restarted
+- name: Restart MySQL service to apply changes
+  ansible.builtin.service:
+    name: mysql
+    state: restarted
