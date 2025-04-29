@@ -1,4 +1,4 @@
-- name: Install Java, Tomcat, and Nexus
+- name: Install Java, Tomcat, and mysql
   hosts: all
   become: yes
   vars:
