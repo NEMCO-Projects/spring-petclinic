@@ -2,7 +2,6 @@
   hosts: mysql_server
   become: yes
   vars:
-    mysql_root_password: "root"  # Default password for root, change if necessary
     petclinic_db: "petclinic"
     petclinic_user: "petclinic"
     petclinic_password: "Imran@ali_khan1973"  # Set your own secure password here
@@ -26,7 +25,6 @@
 
     - name: Secure MySQL installation
       ansible.builtin.shell: |
-        mysql -u root -e "UPDATE mysql.user SET authentication_string=PASSWORD('{{ mysql_root_password }}') WHERE User='root';"
         mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
         mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';"
         mysql -u root -e "FLUSH PRIVILEGES;"
@@ -37,7 +35,7 @@
         name: "{{ petclinic_db }}"
         state: present
         login_user: root
-        login_password: "{{ mysql_root_password }}"
+        login_password: "root"
         host: "{{ mysql_server_ip }}"
 
     - name: Create MySQL user and grant privileges
@@ -48,7 +46,7 @@
         host: "%"
         state: present
         login_user: root
-        login_password: "{{ mysql_root_password }}"
+        login_password: "root"
 
     - name: Allow remote access to MySQL
       ansible.builtin.lineinfile:
