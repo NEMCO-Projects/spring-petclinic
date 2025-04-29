@@ -12,21 +12,24 @@
     state: started
     enabled: true
 
+# Fix: Change MySQL root user to use mysql_native_password
 - name: Set MySQL root user to use mysql_native_password
   ansible.builtin.shell: |
     mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;"
   args:
     executable: /bin/bash
 
-- name: Set MySQL root password (can be skipped if already set above)
+# Set root password using mysql_user module (can be skipped if already set above)
+- name: Set MySQL root password
   community.mysql.mysql_user:
     login_user: root
     login_password: root
     user: root
     password: root
     host_all: true
-  ignore_errors: true  # Optional: in case already set
+  ignore_errors: true  # Skip if already set, prevents errors
 
+# Create petclinic database
 - name: Create petclinic database
   community.mysql.mysql_db:
     name: petclinic
@@ -34,6 +37,7 @@
     login_user: root
     login_password: root
 
+# Create petclinic user with privileges
 - name: Create petclinic user with privileges
   community.mysql.mysql_user:
     name: petclinic
@@ -44,11 +48,13 @@
     login_user: root
     login_password: root
 
+# Remove existing application.properties if it exists
 - name: Remove existing application.properties if it exists
   ansible.builtin.file:
     path: ~/workspace/SpringBoot-CICD/spring-petclinic/src/main/resources/application.properties
     state: absent
 
+# Create new application.properties file
 - name: Create new application.properties file
   ansible.builtin.copy:
     dest: ~/workspace/SpringBoot-CICD/spring-petclinic/src/main/resources/application.properties
