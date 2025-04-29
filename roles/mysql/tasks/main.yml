@@ -1,79 +1,62 @@
-- name: Ensure required system packages are installed
-  ansible.builtin.package:
-    name:
-      - python3
-      - python3-pymysql
-      - mysql-server
-    state: present
+- name: Install and configure MySQL on EC2 instance
+  hosts: mysql_server
+  become: yes
+  vars:
+    mysql_root_password: "root"  # Default password for root, change if necessary
+    petclinic_db: "petclinic"
+    petclinic_user: "petclinic"
+    petclinic_password: "Imran@ali_khan1973"  # Set your own secure password here
+    mysql_server_ip: "{{ lookup('file', 'mysql_ip.txt') | trim }}"  # Use the IP from mysql_ip.txt
 
-- name: Ensure MySQL is running and enabled
-  ansible.builtin.service:
-    name: mysql
-    state: started
-    enabled: true
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
 
-# Fix: Change MySQL root user to use mysql_native_password
-- name: Set MySQL root user to use mysql_native_password
-  ansible.builtin.shell: |
-    mysql -u root -e "ALTER USER 'root'@'{{ mysql_server_ip }}' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;"
-  args:
-    executable: /bin/bash
+    - name: Install MySQL server
+      ansible.builtin.package:
+        name: mysql-server
+        state: present
 
-# Set root password using mysql_user module (can be skipped if already set above)
-- name: Set MySQL root password
-  community.mysql.mysql_user:
-    login_user: root
-    login_password: root
-    user: root
-    password: root
-    host: "{{ mysql_server_ip }}"
-  ignore_errors: true  # Skip if already set, prevents errors
+    - name: Ensure MySQL service is started and enabled
+      ansible.builtin.service:
+        name: mysql
+        state: started
+        enabled: true
 
-# Create petclinic database
-- name: Create petclinic database
-  community.mysql.mysql_db:
-    name: petclinic
-    state: present
-    login_user: root
-    login_password: root
-    host: "{{ mysql_server_ip }}"
+    - name: Secure MySQL installation
+      ansible.builtin.shell: |
+        mysql -u root -e "UPDATE mysql.user SET authentication_string=PASSWORD('{{ mysql_root_password }}') WHERE User='root';"
+        mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
+        mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';"
+        mysql -u root -e "FLUSH PRIVILEGES;"
+      ignore_errors: yes
 
-# Create petclinic user with privileges
-- name: Create petclinic user with privileges
-  community.mysql.mysql_user:
-    name: petclinic
-    password: petclinic
-    priv: 'petclinic.*:ALL'
-    host: "{{ mysql_server_ip }}"
-    state: present
-    login_user: root
-    login_password: root
+    - name: Create MySQL database
+      community.mysql.mysql_db:
+        name: "{{ petclinic_db }}"
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        host: "{{ mysql_server_ip }}"
 
-# Remove existing application.properties if it exists
-- name: Remove existing application.properties if it exists
-  ansible.builtin.file:
-    path: ~/workspace/SpringBoot-CICD/spring-petclinic/src/main/resources/application.properties
-    state: absent
+    - name: Create MySQL user and grant privileges
+      community.mysql.mysql_user:
+        name: "{{ petclinic_user }}"
+        password: "{{ petclinic_password }}"
+        priv: "{{ petclinic_db }}.*:ALL"
+        host: "%"
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
 
-# Create new application.properties file
-- name: Create new application.properties file
-  ansible.builtin.copy:
-    dest: ~/workspace/SpringBoot-CICD/spring-petclinic/src/main/resources/application.properties
-    content: |
-      database=mysql
-      spring.datasource.url=${MYSQL_URL:jdbc:mysql://{{ mysql_server_ip }}/petclinic}
-      spring.datasource.username=${MYSQL_USER:petclinic}
-      spring.datasource.password=${MYSQL_PASS:petclinic}
-      spring.sql.init.mode=always
-      spring.sql.init.schema-locations=classpath*:db/${database}/schema.sql
-      spring.sql.init.data-locations=classpath*:db/${database}/data.sql
-      spring.thymeleaf.mode=HTML
-      spring.jpa.hibernate.ddl-auto=none
-      spring.jpa.open-in-view=false
-      spring.messages.basename=messages/messages
-      management.endpoints.web.exposure.include=*
-      logging.level.org.springframework=INFO
-      spring.web.resources.cache.cachecontrol.max-age=12h
-    owner: "{{ ansible_user | default('root') }}"
-    group: "{{ ansible_user | default('root') }}"
-    mode: '0644'
+    - name: Allow remote access to MySQL
+      ansible.builtin.lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^bind-address'
+        line: 'bind-address = 0.0.0.0'
+
+    - name: Restart MySQL service to apply changes
+      ansible.builtin.service:
+        name: mysql
+        state: restarted
