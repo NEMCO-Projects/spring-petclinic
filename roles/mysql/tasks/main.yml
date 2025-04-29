@@ -1,0 +1,80 @@
+
+- name: Install MySQL server
+  ansible.builtin.package:
+    name: mysql-server
+    state: present
+
+- name: Ensure MySQL is running and enabled
+  ansible.builtin.service:
+    name: mysql
+    state: started
+    enabled: true
+
+- name: Set MySQL root password
+  community.mysql.mysql_user:
+    login_user: root
+    login_password: ''
+    user: root
+    password: root
+    host_all: true
+  ignore_errors: true
+
+- name: Create petclinic database
+  community.mysql.mysql_db:
+    name: petclinic
+    state: present
+    login_user: root
+    login_password: root
+
+- name: Create petclinic user with privileges
+  community.mysql.mysql_user:
+    name: petclinic
+    password: petclinic
+    priv: 'petclinic.*:ALL'
+    host: localhost
+    state: present
+    login_user: root
+    login_password: root
+
+- name: Remove existing application.properties if it exists
+  ansible.builtin.file:
+    path: ~/workspace/SpringBoot-CICD/spring-petclinic/src/main/resources/application.properties
+    state: absent
+
+- name: Create new application.properties file
+  ansible.builtin.copy:
+    dest: ~/workspace/SpringBoot-CICD/spring-petclinic/src/main/resources/application.properties
+    content: |
+      database=mysql
+      spring.datasource.url=${MYSQL_URL:jdbc:mysql://localhost/petclinic}
+      spring.datasource.username=${MYSQL_USER:petclinic}
+      spring.datasource.password=${MYSQL_PASS:petclinic}
+      # SQL is written to be idempotent so this is safe
+      spring.sql.init.mode=always
+
+      spring.sql.init.schema-locations=classpath*:db/${database}/schema.sql
+      spring.sql.init.data-locations=classpath*:db/${database}/data.sql
+
+      # Web
+      spring.thymeleaf.mode=HTML
+
+      # JPA
+      spring.jpa.hibernate.ddl-auto=none
+      spring.jpa.open-in-view=false
+
+      # Internationalization
+      spring.messages.basename=messages/messages
+
+      # Actuator
+      management.endpoints.web.exposure.include=*
+
+      # Logging
+      logging.level.org.springframework=INFO
+      # logging.level.org.springframework.web=DEBUG
+      # logging.level.org.springframework.context.annotation=TRACE
+
+      # Maximum time static resources should be cached
+      spring.web.resources.cache.cachecontrol.max-age=12h
+    owner: "{{ ansible_user | default('root') }}"
+    group: "{{ ansible_user | default('root') }}"
+    mode: '0644'
