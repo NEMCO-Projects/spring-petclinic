@@ -1,14 +1,31 @@
-- name: Install Java, Tomcat, and mysql
+- name: Update apt cache on all servers
   hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+---
+- name: Install Java on tomcat host
+  hosts: tomcat_server
+  become: yes
+  roles:
+    - java
+
+- name: Install Tomcat on Tomcat host
+  hosts: tomcat_server
   become: yes
   vars:
     mysql_server_ip: "{{ lookup('file', 'mysql_ip.txt') | trim }}"
-  tasks:
-    - name: Update apt package cache
-      apt:
-        update_cache: yes
-
   roles:
-    - java
     - tomcat
+
+- name: Configure MySQL on DB host
+  hosts: mysql_server
+  become: yes
+  vars:
+    mysql_server_ip: "{{ lookup('file', 'mysql_ip.txt') | trim }}"
+  roles:
     - mysql
