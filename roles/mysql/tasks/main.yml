@@ -15,7 +15,7 @@
 # Fix: Change MySQL root user to use mysql_native_password
 - name: Set MySQL root user to use mysql_native_password
   ansible.builtin.shell: |
-    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;"
+    mysql -u root -e "ALTER USER 'root'@'{{ mysql_server_ip }}' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;"
   args:
     executable: /bin/bash
 
@@ -26,7 +26,7 @@
     login_password: root
     user: root
     password: root
-    host_all: true
+    host: "{{ mysql_server_ip }}"
   ignore_errors: true  # Skip if already set, prevents errors
 
 # Create petclinic database
@@ -36,6 +36,7 @@
     state: present
     login_user: root
     login_password: root
+    host: "{{ mysql_server_ip }}"
 
 # Create petclinic user with privileges
 - name: Create petclinic user with privileges
@@ -43,7 +44,7 @@
     name: petclinic
     password: petclinic
     priv: 'petclinic.*:ALL'
-    host: localhost
+    host: "{{ mysql_server_ip }}"
     state: present
     login_user: root
     login_password: root
@@ -60,7 +61,7 @@
     dest: ~/workspace/SpringBoot-CICD/spring-petclinic/src/main/resources/application.properties
     content: |
       database=mysql
-      spring.datasource.url=${MYSQL_URL:jdbc:mysql://localhost/petclinic}
+      spring.datasource.url=${MYSQL_URL:jdbc:mysql://{{ mysql_server_ip }}/petclinic}
       spring.datasource.username=${MYSQL_USER:petclinic}
       spring.datasource.password=${MYSQL_PASS:petclinic}
       spring.sql.init.mode=always
