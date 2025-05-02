@@ -1,5 +1,5 @@
-azureuser@any:~$ cat setup.yml
-- name: Update apt cache on all servers
+---
+- name: Install and configure MySQL for Petclinic
   hosts: all
   become: yes
 
@@ -22,44 +22,63 @@ azureuser@any:~$ cat setup.yml
         update_cache: yes
 
     - name: Install MySQL server
-      apt:
+      ansible.builtin.apt:
         name: mysql-server
         state: present
         update_cache: yes
 
     - name: Start and enable MySQL service
-      service:
+      ansible.builtin.service:
         name: mysql
         state: started
         enabled: yes
 
-    - name: Set MySQL root password and create Petclinic database and user
-      mysql_user:
+    - name: Change MySQL root authentication to use mysql_native_password
+      ansible.builtin.shell: |
+        mysql -u root <<EOF
+        ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '{{ mysql_root_password }}';
+        FLUSH PRIVILEGES;
+        EOF
+      args:
+        executable: /bin/bash
+
+    - name: Create the Petclinic database
+      community.mysql.mysql_db:
         login_user: root
-        login_password: "root"
+        login_password: "{{ mysql_root_password }}"
+        name: "{{ petclinic_db_name }}"
+        state: present
+
+    - name: Create the Petclinic user with full privileges
+      community.mysql.mysql_user:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
         name: "{{ petclinic_db_user }}"
         password: "{{ petclinic_db_password }}"
         priv: "{{ petclinic_db_name }}.*:ALL"
         host: "%"
         state: present
-      ignore_errors: yes  # In case root doesn't need a password
 
-    - name: Create the Petclinic database
-      mysql_db:
-        login_user: root
-        login_password: "root"
-        name: "{{ petclinic_db_name }}"
-        state: present
-      ignore_errors: yes
-
-    - name: Allow remote access to MySQL (optional)
-      lineinfile:
+    - name: Allow remote access to MySQL
+      ansible.builtin.lineinfile:
         path: /etc/mysql/mysql.conf.d/mysqld.cnf
         regexp: '^bind-address'
         line: 'bind-address = 0.0.0.0'
         backup: yes
 
-    - name: Restart MySQL to apply config changes
-      service:
+    - name: Restart MySQL to apply configuration changes
+      ansible.builtin.service:
         name: mysql
         state: restarted
+
+    - name: Open port 3306 for remote access (optional, for UFW)
+      ansible.builtin.shell: |
+        ufw allow 3306
+      when: ansible_facts['distribution'] == 'Ubuntu'
+
+
+
+#  Requirements
+# Ensure your control node has this collection installed:
+
+# $ ansible-galaxy collection install community.mysql
