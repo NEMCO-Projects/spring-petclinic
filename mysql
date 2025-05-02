@@ -1,0 +1,65 @@
+azureuser@any:~$ cat setup.yml
+- name: Update apt cache on all servers
+  hosts: all
+  become: yes
+
+  vars:
+    mysql_root_password: root
+    petclinic_db_name: petclinic
+    petclinic_db_user: petclinic
+    petclinic_db_password: "Imran@ali_khan1973"
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Python MySQL dependencies
+      ansible.builtin.apt:
+        name: python3-pymysql
+        state: present
+        update_cache: yes
+
+    - name: Install MySQL server
+      apt:
+        name: mysql-server
+        state: present
+        update_cache: yes
+
+    - name: Start and enable MySQL service
+      service:
+        name: mysql
+        state: started
+        enabled: yes
+
+    - name: Set MySQL root password and create Petclinic database and user
+      mysql_user:
+        login_user: root
+        login_password: "root"
+        name: "{{ petclinic_db_user }}"
+        password: "{{ petclinic_db_password }}"
+        priv: "{{ petclinic_db_name }}.*:ALL"
+        host: "%"
+        state: present
+      ignore_errors: yes  # In case root doesn't need a password
+
+    - name: Create the Petclinic database
+      mysql_db:
+        login_user: root
+        login_password: "root"
+        name: "{{ petclinic_db_name }}"
+        state: present
+      ignore_errors: yes
+
+    - name: Allow remote access to MySQL (optional)
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^bind-address'
+        line: 'bind-address = 0.0.0.0'
+        backup: yes
+
+    - name: Restart MySQL to apply config changes
+      service:
+        name: mysql
+        state: restarted
